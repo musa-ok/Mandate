@@ -1,0 +1,27 @@
+# --- API katmani ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pydantic>=2.7
+pydantic-settings>=2.3
+
+# --- LLM (Google Gemini resmi SDK) ---
+google-genai>=1.0
+
+# --- Ajan orkestrasyonu ---
+langgraph>=0.2
+
+# --- RAG / Vektor DB ---
+qdrant-client[fastembed]>=1.10
+pypdf>=4.2
+
+# --- Loglama / SQL ---
+SQLAlchemy>=2.0
+
+# --- Solana ---
+solana>=0.34
+solders>=0.21
+
+# --- Demo arayuzu ---
+streamlit>=1.36
+requests>=2.31

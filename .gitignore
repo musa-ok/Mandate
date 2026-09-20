@@ -1,0 +1,66 @@
+# ==========================================================================
+#  SIRLAR - bu bloktaki hicbir sey asla commit edilmemeli
+# ==========================================================================
+.env
+.env.*
+!.env.example
+
+# Solana cuzdan gizli anahtarlari (solana-keygen ciktilari dahil)
+*.key
+*.pem
+id.json
+keypair*.json
+wallet*.json
+*-keypair.json
+
+# Streamlit sirlari
+.streamlit/secrets.toml
+
+# ==========================================================================
+#  Uretilen veriler - makinede olusur, repoya girmez
+# ==========================================================================
+# Qdrant vektor dosyalari + SQLite operasyon loglari
+storage/
+*.db
+*.sqlite
+*.sqlite3
+
+# FastEmbed'in indirdigi ONNX model dosyalari (yuzlerce MB)
+local_cache/
+.cache/
+models/
+
+# ==========================================================================
+#  Python
+# ==========================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Sanal ortamlar
+.venv/
+venv/
+env/
+ENV/
+
+# Test / lint onbellekleri
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ==========================================================================
+#  Editor ve isletim sistemi
+# ==========================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
