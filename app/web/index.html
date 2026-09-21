@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mandate · Kurumsal Ajan Platformu</title>
+  <meta name="description" content="Çok ajanlı kurumsal iş akışı paneli: talepler, insan onayı ve denetim kaydı.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='4' fill='%23016a71'/%3E%3Ccircle cx='4' cy='5' r='2.5' fill='%2327251e'/%3E%3Ccircle cx='20' cy='5' r='2.5' fill='%2327251e'/%3E%3Ccircle cx='12' cy='21' r='2.5' fill='%2327251e'/%3E%3C/svg%3E">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" aria-label="Ana menü">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 5 L12 12 L20 5 M12 12 L12 21" stroke="#27251e" stroke-width="1.5" fill="none"/>
+        <circle cx="12" cy="12" r="4" fill="#016a71"/>
+        <circle cx="4" cy="5" r="2.5" fill="#27251e"/><circle cx="20" cy="5" r="2.5" fill="#27251e"/>
+        <circle cx="12" cy="21" r="2.5" fill="#27251e"/>
+      </svg>
+      <div>
+        <div class="brand-name">Mandate</div>
+        <div class="brand-sub">ACME Teknoloji</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item" data-page="request" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 12h12M12 6l6 6-6 6"/></svg>
+        Talep gönder
+      </button>
+      <button class="nav-item" data-page="approvals">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>
+        Onay kuyruğu
+        <span class="nav-count" id="pending-count" hidden>0</span>
+      </button>
+      <button class="nav-item" data-page="logs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h9"/></svg>
+        İşlem kayıtları
+      </button>
+      <button class="nav-item" data-page="knowledge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 5h10a4 4 0 014 4v10H9a4 4 0 01-4-4z"/></svg>
+        Bilgi tabanı
+      </button>
+    </nav>
+
+    <section class="side-section" aria-labelledby="routing-label">
+      <div class="side-label" id="routing-label">Model yönlendirme</div>
+      <div id="routing" class="stack"></div>
+    </section>
+
+    <div class="sidebar-foot" id="health-foot">Bağlanıyor…</div>
+  </aside>
+
+  <main class="main">
+    <section class="page" id="source-gate" hidden aria-label="Kurum içi erişim"></section>
+    <!-- ================================================= Talep gönder -->
+    <section class="page" id="page-request" aria-labelledby="h-request">
+      <div class="page-head">
+        <h1 id="h-request">Bugün neye ihtiyacınız var?</h1>
+        <p class="muted body">Talebiniz uygun uzman ajana yönlendirilir. Kritik işlemler bir yöneticinin onayı olmadan yapılmaz.</p>
+      </div>
+
+      <form class="composer" id="composer" autocomplete="off">
+        <label class="sr-only" for="req-text">Talep</label>
+        <textarea id="req-text" required minlength="3" maxlength="4000"
+          placeholder="Örn: Pazarlama için 45.000 TL reklam harcamasını onayla"></textarea>
+        <div class="composer-bar">
+          <div class="row" role="group" aria-label="Kanal">
+            <button type="button" class="chip" data-channel="internal" aria-pressed="true">İç talep</button>
+            <button type="button" class="chip" data-channel="customer" aria-pressed="false">Müşteri mesajı (dış kanal)</button>
+          </div>
+          <label class="btn" for="req-file" title="Sözleşme veya tedarikçi teklifi ekle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M8 12l6-6a3 3 0 014 4l-8 8a5 5 0 01-7-7l7-7"/></svg>
+            Dosya ekle
+          </label>
+          <input id="req-file" type="file" accept=".pdf,.txt,.md" hidden>
+          <span class="attachment-name" id="file-name"></span>
+          <button type="button" class="btn" id="file-clear" hidden aria-label="Eki kaldır">Kaldır</button>
+          <span class="spacer"></span>
+          <label class="sr-only" for="req-requester">Talep sahibi</label>
+          <input class="requester" id="req-requester" value="ali@acme.com" maxlength="120" placeholder="Talep sahibi">
+          <button class="btn btn-primary" type="submit" id="req-submit">Gönder</button>
+        </div>
+      </form>
+
+      <p class="small muted" id="channel-note"></p>
+      <div id="result" aria-live="polite"></div>
+
+      <div class="stack">
+        <h2>Örnek talepler</h2>
+        <div class="suggestions" id="suggestions"></div>
+      </div>
+    </section>
+
+    <!-- ================================================= Onay kuyruğu -->
+    <section class="page" id="page-approvals" aria-labelledby="h-approvals" hidden>
+      <div class="page-head-row">
+        <div class="page-head">
+          <h1 id="h-approvals">Onay kuyruğu</h1>
+          <p class="muted body">Ajanların önerdiği kritik işlemler. Onaylanan işlem hemen yürütülür ve kaydedilir.</p>
+        </div>
+        <button class="btn" id="approvals-refresh">Yenile</button>
+      </div>
+      <div id="admin-gate"></div>
+      <div id="approvals-list" class="stack" style="gap:16px"></div>
+    </section>
+
+    <!-- ================================================= İşlem kayıtları -->
+    <section class="page" id="page-logs" aria-labelledby="h-logs" hidden>
+      <div class="page-head-row">
+        <div class="page-head">
+          <h1 id="h-logs">İşlem kayıtları</h1>
+          <p class="muted body">Her talep, yönlendirme, karar ve onay kalıcı olarak kaydedilir.</p>
+        </div>
+        <button class="btn" id="logs-refresh">Yenile</button>
+      </div>
+      <div class="row" role="group" aria-label="Durum filtresi" id="log-filters"></div>
+      <div id="logs-table"></div>
+      <div id="log-detail"></div>
+    </section>
+
+    <!-- ================================================= Bilgi tabanı -->
+    <section class="page" id="page-knowledge" aria-labelledby="h-knowledge" hidden>
+      <div class="page-head">
+        <h1 id="h-knowledge">Bilgi tabanı</h1>
+        <p class="muted body">Ajanların dayandığı kurumsal belgeler. Her ajan yalnızca kendi alanındaki belgeleri görür.</p>
+      </div>
+      <div class="kv" id="kb-stats"></div>
+      <form class="card" id="kb-form">
+        <h2>Belge yükle</h2>
+        <div class="form-row">
+          <div class="field">
+            <label for="kb-domain">Alan</label>
+            <select class="input" id="kb-domain">
+              <option value="it_hr">IT / İK politikaları</option>
+              <option value="red_lines">Sözleşme kırmızı çizgileri</option>
+              <option value="procurement">Satın alma şartnamesi</option>
+              <option value="public_faq">Müşteri SSS (dışa açık)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="kb-file">Dosya (PDF, TXT, MD)</label>
+            <input class="input" id="kb-file" type="file" accept=".pdf,.txt,.md" multiple required>
+          </div>
+        </div>
+        <div class="row"><button class="btn btn-primary" type="submit">Hafızaya işle</button></div>
+        <div id="kb-result"></div>
+      </form>
+    </section>
+  </main>
+</div>
+<script src="/app.js" defer></script>
+</body>
+</html>

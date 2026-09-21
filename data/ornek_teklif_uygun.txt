@@ -1,0 +1,15 @@
+NOVABULUT BILISIM A.S. - HIZMET TEKLIFI
+
+Sirketimiz NovaBulut Bilisim A.S., ACME Teknoloji icin yonetilen bulut hizmeti teklif eder.
+
+Guvenlik: NovaBulut, 2024 yilinda yenilenmis gecerli ISO/IEC 27001 sertifikasina sahiptir.
+Tum musteri verileri Istanbul ve Ankara'daki veri merkezlerimizde saklanir ve islenir; veri yurt
+disina aktarilmaz.
+KVKK: Musterilerimizle KVKK kapsaminda veri isleyen sozlesmesi imzaliyoruz.
+Erisilebilirlik: Aylik yuzde 99,95 erisilebilirlik taahhut ediyoruz.
+Destek: Kritik olaylar icin 7/24 destek hattimiz vardir; ilk yanit suresi en fazla 30 dakikadir.
+Referanslar: Atlas Lojistik, Mavi Bankacilik, Deniz Enerji ve Gunes Saglik referanslarimizdir.
+Fiyat: Teklif edilen fiyatlar 24 ay boyunca sabittir.
+Odeme: Faturalar 60 gun vadelidir.
+Cikis: Sozlesme sona erdiginde tum veriler 15 gun icinde CSV ve JSON formatinda iade edilir ve
+iadeden sonra sistemlerimizden kalici olarak silinir.

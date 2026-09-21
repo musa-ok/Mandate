@@ -1,0 +1,37 @@
+ACME TEKNOLOJI A.S. - BULUT / YAZILIM HIZMET TEDARIKCISI SATIN ALMA SARTNAMESI
+Dokuman no: SAT-SRT-003 | Sahibi: Satin Alma Mudurlugu
+
+Bir tedarikcinin onayli tedarikci listesine alinabilmesi icin ZORUNLU maddelerin tamamini
+karsilamasi gerekir. TERCIH maddeleri puanlamada kullanilir.
+
+
+SA-01. BILGI GUVENLIGI SERTIFIKASI (ZORUNLU)
+Tedarikci gecerli bir ISO/IEC 27001 sertifikasina sahip olmalidir.
+
+SA-02. VERI KONUMU (ZORUNLU)
+Sirket verileri yalnizca Turkiye'deki veri merkezlerinde saklanmali ve islenmelidir.
+
+SA-03. KVKK UYUMU (ZORUNLU)
+Tedarikci KVKK kapsaminda veri isleyen sozlesmesi imzalamayi kabul etmelidir.
+
+SA-04. HIZMET SEVIYESI (ZORUNLU)
+Aylik erisilebilirlik taahhudu en az yuzde 99,9 olmalidir.
+
+SA-05. DESTEK (ZORUNLU)
+Kritik olaylar icin 7/24 destek ve en fazla 1 saatlik ilk yanit suresi sunulmalidir.
+
+SA-06. REFERANS (TERCIH)
+Tedarikci benzer olcekte en az 3 kurumsal musteri referansi sunmalidir.
+
+SA-07. FIYAT SABITLIGI (TERCIH)
+Fiyatlar en az 12 ay boyunca sabit tutulmalidir.
+
+SA-08. ODEME VADESI (TERCIH)
+Tedarikci en az 45 gunluk odeme vadesini kabul etmelidir.
+
+SA-09. SIBER SIGORTA (TERCIH)
+Tedarikcinin siber risk sigorta policesi bulunmalidir.
+
+SA-10. CIKIS VE VERI IADESI (ZORUNLU)
+Sozlesme sona erdiginde tum veriler 30 gun icinde standart bir formatta iade edilmeli ve
+iadeden sonra tedarikci sistemlerinden silinmelidir.

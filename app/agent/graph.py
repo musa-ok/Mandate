@@ -1,157 +1,290 @@
-r"""LangGraph ile otonom karar-islem dongusu.
+r"""Mandate: LangGraph coklu ajan agi.
 
-    retrieve -> decide -> [RED] ------------------> log
-                      \-> [ONAY] -> policy -> [ihlal] -> log
-                                          \-> [temiz] -> execute -> log
+    START -> guard --(injection)--------------------------------------> END
+               |
+               v
+             router (supervisor) --(unsupported)-----------------------> END
+               |   zone=external -> YALNIZCA customer_support (kod kurali, 2 katman)
+               |
+               +--> data_analyst ---------> END   (salt okunur, onay gerekmez)
+               +--> customer_support -----> END   (yalnizca oneri, eylem yok)
+               +--> it_ops ------------+
+               +--> contract_analyst --+
+               +--> finance -----------+--(pending_action yoksa)--> END
+               +--> procurement -------+
+                        |
+        (pending_action varsa)
+                        v
+                 human_approval   <-- interrupt(): grafik BURADA durur
+                        |
+             +----------+----------+
+             v                     v
+       execute_action         cancel_action  --> END
 
-Her dugum saf bir fonksiyondur; durum (state) dugumler arasinda tasinir.
-Grafi ayri tutmanin sebebi: yeni bir adim (orn. insan onayi, muhasebe entegrasyonu)
-eklemek tek bir kenar degisikligi olsun.
+Tasarim kararlari
+-----------------
+* Ajanlar EYLEMI YURUTMEZ, yalnizca `pending_action` ONERIR. Yurutme tek bir
+  yerde (`execute_action`) ve yalnizca insan onayindan sonra olur. Boylece
+  "kritik eylem onaysiz calisir" hatasi yapisal olarak imkansizdir.
+* `human_approval` dugumu bilerek MINIK tutulur. LangGraph, interrupt sonrasi
+  dugumu BASTAN calistirir; bu dugumde yan etki olsaydi iki kez olusurdu. Yan
+  etkili her sey (arac calistirma) interrupt'tan SONRAKI ayri dugumdedir.
+* Durum yalnizca duz JSON tipleri tasir (dict/list/str). Checkpoint SQLite'a
+  yazildigi icin bekleyen onaylar sunucu yeniden baslasa da kaybolmaz.
+* Insan karari `approved is True` degilse RED sayilir (fail-closed).
 """
 from __future__ import annotations
 
-import json
-from datetime import datetime, timezone
-from typing import Any, TypedDict
+import asyncio
+import operator
+from typing import Annotated, Any, TypedDict
 
-from langgraph.graph import END, StateGraph
+from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.graph import END, START, StateGraph
+from langgraph.types import interrupt
 
-from app.agent.decision import decide as run_decision
-from app.agent.policy import enforce as run_policy
-from app.chain.wallet import execute_payment
-from app.db import OperationLog, session_scope
-from app.rag.store import retrieve as run_retrieval
-from app.schemas import (
-    AgentDecision,
-    Decision,
-    OperationResponse,
-    PolicyCheck,
-    RetrievedChunk,
-    TransferResult,
+from app.agent.contract_analyst import contract_analyst_node
+from app.agent.customer_support import customer_support_node
+from app.agent.data_analyst import data_analyst_node
+from app.agent.finance import finance_node
+from app.agent.guardrails import guard_node
+from app.agent.it_ops import it_ops_node
+from app.agent.procurement import procurement_node
+from app.agent.router import router_node
+from app.config import get_settings
+from app.security import zone_of
+from app.tools.contracts import record_contract_decision
+from app.tools.finance_db import record_expense
+from app.tools.it_tools import execute_tool
+from app.tools.procurement import record_vendor_approval
+
+# Router'in secebilecegi uzman ajanlar (dugum adi == route degeri)
+SPECIALISTS = (
+    "it_ops", "data_analyst", "contract_analyst", "finance", "procurement", "customer_support",
 )
+# Eylem ONEREBILEN ajanlar: ciktilari human_approval kapisindan gecer
+ACTION_AGENTS = ("it_ops", "contract_analyst", "finance", "procurement")
+# Salt okunur / yalnizca oneri ureten ajanlar: dogrudan END
+READ_ONLY_AGENTS = ("data_analyst", "customer_support")
+# DIS bolgeden gelen bir talebin ulasabilecegi TEK ajan
+EXTERNAL_ALLOWED = ("customer_support",)
 
 
-class AgentState(TypedDict, total=False):
+class OSState(TypedDict, total=False):
+    # --- girdi ---
+    run_id: str
     request_text: str
     requester: str
-    context: list[RetrievedChunk]
-    decision: AgentDecision
-    policy: PolicyCheck
-    transfer: TransferResult
-    operation_id: int
-    created_at: datetime
+    source: str  # internal_panel, internal_slack, external_web, ... (kimlik bilgisinden)
+    zone: str  # internal | external - KODLA hesaplanir, disaridan verilmez
+    attachment_name: str
+    attachment_text: str
+
+    # --- guard + router ---
+    injection_hits: list[str]
+    route: str  # it_ops | data_analyst | contract_analyst | unsupported | blocked
+    route_reasoning: str
+    route_confidence: float
+
+    # --- uzman ajan ciktilari ---
+    answer: str
+    data: dict[str, Any]  # ajana ozgu yapisal sonuc (sql+satirlar, risk raporu, ...)
+    context: list[dict[str, Any]]  # kullanilan RAG parcalari
+
+    # --- insan onayi (HITL) ---
+    pending_action: dict[str, Any] | None
+    approval: dict[str, Any] | None
+    action_result: dict[str, Any] | None
+
+    # --- Dinamik Bilissel Yonlendirme: uzman ajanin fiilen kullandigi model ---
+    llm: dict[str, Any]
+
+    # --- sonuc ---
+    status: str  # completed | rejected | blocked | unsupported | needs_input | failed
+    error: str
+    trace: Annotated[list[str], operator.add]
 
 
-# --------------------------------------------------------------------------
-# Dugumler
-# --------------------------------------------------------------------------
-async def node_retrieve(state: AgentState) -> dict[str, Any]:
-    return {"context": run_retrieval(state["request_text"])}
-
-
-async def node_decide(state: AgentState) -> dict[str, Any]:
-    return {"decision": run_decision(state["request_text"], state.get("context", []))}
-
-
-async def node_policy(state: AgentState) -> dict[str, Any]:
-    return {"policy": run_policy(state["decision"])}
-
-
-async def node_execute(state: AgentState) -> dict[str, Any]:
-    return {"transfer": await execute_payment(state["decision"].payment)}
-
-
-async def node_log(state: AgentState) -> dict[str, Any]:
-    decision: AgentDecision = state["decision"]
-    # RED kararlarinda policy dugumu hic calismaz; ihlal degil "uygulanmadi" demektir.
-    policy: PolicyCheck = state.get("policy", PolicyCheck(passed=False, violations=[]))
-    transfer: TransferResult = state.get("transfer", TransferResult())
-    context = state.get("context", [])
-
-    created_at = datetime.now(timezone.utc)
-    row = OperationLog(
-        created_at=created_at,
-        requester=state.get("requester", "anonymous"),
-        request_text=state["request_text"],
-        decision=decision.decision.value,
-        reasoning=decision.reasoning,
-        cited_rules_json=json.dumps(decision.cited_rules, ensure_ascii=False),
-        confidence=decision.confidence,
-        injection_detected=decision.injection_detected,
-        policy_passed=policy.passed,
-        policy_violations_json=json.dumps(policy.violations, ensure_ascii=False),
-        recipient_wallet=decision.payment.recipient_wallet,
-        amount=decision.payment.amount,
-        currency=decision.payment.currency.value,
-        tx_hash=transfer.tx_hash,
-        tx_confirmed=transfer.confirmed,
-        tx_simulated=transfer.simulated,
-        tx_error=transfer.error,
-        context_json=json.dumps([c.model_dump() for c in context], ensure_ascii=False),
+def initial_state(
+    run_id: str,
+    text: str,
+    requester: str = "anonymous",
+    attachment_name: str = "",
+    attachment_text: str = "",
+    source: str = "external_web",
+) -> OSState:
+    return OSState(
+        run_id=run_id,
+        request_text=text,
+        requester=requester,
+        source=source,
+        zone=zone_of(source),  # bilinmeyen kaynak -> external (fail-closed)
+        attachment_name=attachment_name,
+        attachment_text=attachment_text,
+        trace=[],
     )
-    with session_scope() as s:
-        s.add(row)
-        s.flush()
-        operation_id = row.id
-    return {"operation_id": operation_id, "created_at": created_at, "policy": policy, "transfer": transfer}
+
+
+# --------------------------------------------------------------------------
+# Insan onayi
+# --------------------------------------------------------------------------
+def normalize_approval(raw: Any) -> dict[str, Any]:
+    """Insan kararini guvenli bicime cevirir. Sadece acik `True` ONAY sayilir."""
+    if not isinstance(raw, dict):
+        return {"approved": False, "reviewer": "unknown", "comment": "gecersiz karar bicimi"}
+    return {
+        "approved": raw.get("approved") is True,
+        "reviewer": str(raw.get("reviewer") or "unknown")[:120],
+        "comment": str(raw.get("comment") or "")[:1000],
+    }
+
+
+def node_human_approval(state: OSState) -> dict[str, Any]:
+    """Grafigi durdurur; `Command(resume={...})` gelene kadar burada bekler.
+
+    Bu fonksiyon resume'da bastan calisir - bu yuzden interrupt'tan once yan etki yok.
+    """
+    action = state["pending_action"]
+    decision = interrupt(
+        {
+            "run_id": state.get("run_id"),
+            "requester": state.get("requester"),
+            "route": state.get("route"),
+            "action": action,
+            "message": "Bu eylem insan onayi gerektiriyor.",
+        }
+    )
+    approval = normalize_approval(decision)
+    verdict = "ONAY" if approval["approved"] else "RED"
+    return {
+        "approval": approval,
+        "trace": [f"insan karari: {verdict} (inceleyen: {approval['reviewer']})"],
+    }
+
+
+async def node_execute_action(state: OSState) -> dict[str, Any]:
+    """Onaylanmis eylemi yurutur. Grafikte eylemin calistigi TEK yer burasidir."""
+    action = state["pending_action"] or {}
+    kind = action.get("kind")
+    try:
+        if kind == "tool_call":
+            result = await execute_tool(
+                action["tool"], action["arguments"], idempotency_key=state["run_id"]
+            )
+        elif kind == "contract_signoff":
+            result = record_contract_decision(
+                contract_name=action["details"].get("contract_name", ""),
+                decision="approved_for_signature",
+                reviewer=(state.get("approval") or {}).get("reviewer", ""),
+                risk_level=action["details"].get("risk_level", ""),
+                idempotency_key=state["run_id"],
+            )
+        elif kind == "expense_approval":
+            args = action["arguments"]
+            result = await asyncio.to_thread(
+                record_expense,
+                get_settings().finance_db_path,
+                run_id=state["run_id"],
+                department=args["department"],
+                amount=args["amount"],
+                category=args["category"],
+                description=(action.get("details") or {}).get("description", ""),
+                status="approved",
+                approver=(state.get("approval") or {}).get("reviewer", ""),
+            )
+        elif kind == "vendor_approval":
+            args = action["arguments"]
+            result = record_vendor_approval(
+                args["vendor"], args["score"],
+                (state.get("approval") or {}).get("reviewer", ""), state["run_id"],
+            )
+        else:
+            raise ValueError(f"bilinmeyen eylem turu: {kind!r}")
+    except Exception as exc:  # noqa: BLE001 - yurutme hatasi sessizce yutulmamali
+        return {
+            "status": "failed",
+            "error": f"{type(exc).__name__}: {exc}",
+            "answer": "Eylem onaylandi ancak yurutulurken hata olustu.",
+            "trace": [f"eylem yurutulemedi: {exc}"],
+        }
+
+    return {
+        "status": "completed",
+        "action_result": result,
+        "answer": f"{action.get('title', 'Eylem')} insan onayiyla gerceklestirildi. {result.get('message', '')}".strip(),
+        "trace": [f"eylem yurutuldu: {action.get('title', kind)}"],
+    }
+
+
+def node_cancel_action(state: OSState) -> dict[str, Any]:
+    action = state["pending_action"] or {}
+    comment = (state.get("approval") or {}).get("comment") or "gerekce belirtilmedi"
+    return {
+        "status": "rejected",
+        "action_result": None,
+        "answer": f"{action.get('title', 'Eylem')} insan tarafindan reddedildi ({comment}). Hicbir islem yapilmadi.",
+        "trace": ["eylem iptal edildi"],
+    }
 
 
 # --------------------------------------------------------------------------
 # Kenarlar
 # --------------------------------------------------------------------------
-def route_after_decision(state: AgentState) -> str:
-    return "policy" if state["decision"].decision == Decision.APPROVE else "log"
+def after_guard(state: OSState) -> str:
+    return END if state.get("route") == "blocked" else "router"
 
 
-def route_after_policy(state: AgentState) -> str:
-    return "execute" if state["policy"].passed else "log"
+def after_router(state: OSState) -> str:
+    route = state.get("route")
+    # HAVA BOSLUGU - ikinci katman. Router dugumu dis bolgeyi zaten musteri destege
+    # sabitler; bu kenar, router'da bir hata olsa bile dis talebin ic ajana gecmesini
+    # grafin yapisinda engeller. Bolge, kaynaktan YENIDEN hesaplanir (state'e guvenilmez).
+    if zone_of(state.get("source")) == "external" and route not in EXTERNAL_ALLOWED:
+        return END
+    return route if route in SPECIALISTS else END
 
 
-def build_graph():
-    graph = StateGraph(AgentState)
-    graph.add_node("retrieve", node_retrieve)
-    graph.add_node("decide", node_decide)
-    graph.add_node("policy", node_policy)
-    graph.add_node("execute", node_execute)
-    graph.add_node("log", node_log)
-
-    graph.set_entry_point("retrieve")
-    graph.add_edge("retrieve", "decide")
-    graph.add_conditional_edges("decide", route_after_decision, {"policy": "policy", "log": "log"})
-    graph.add_conditional_edges("policy", route_after_policy, {"execute": "execute", "log": "log"})
-    graph.add_edge("execute", "log")
-    graph.add_edge("log", END)
-    return graph.compile()
+def needs_approval(state: OSState) -> str:
+    return "human_approval" if state.get("pending_action") else END
 
 
-_compiled = None
+def after_approval(state: OSState) -> str:
+    return "execute_action" if (state.get("approval") or {}).get("approved") else "cancel_action"
 
 
-def get_agent():
-    global _compiled
-    if _compiled is None:
-        _compiled = build_graph()
-    return _compiled
+def build_graph(checkpointer: BaseCheckpointSaver | None = None):
+    """Grafi derler. interrupt() calismak icin bir checkpointer ZORUNLUDUR."""
+    g = StateGraph(OSState)
 
+    g.add_node("guard", guard_node)
+    g.add_node("router", router_node)
+    g.add_node("it_ops", it_ops_node)
+    g.add_node("data_analyst", data_analyst_node)
+    g.add_node("contract_analyst", contract_analyst_node)
+    g.add_node("finance", finance_node)
+    g.add_node("procurement", procurement_node)
+    g.add_node("customer_support", customer_support_node)
+    g.add_node("human_approval", node_human_approval)
+    g.add_node("execute_action", node_execute_action)
+    g.add_node("cancel_action", node_cancel_action)
 
-async def process_request(text: str, requester: str = "anonymous") -> OperationResponse:
-    """Uctan uca tek giris noktasi: talep metni -> loglanmis karar + TxHash."""
-    final = await get_agent().ainvoke({"request_text": text, "requester": requester})
-    decision: AgentDecision = final["decision"]
-    approved = decision.decision == Decision.APPROVE and final["policy"].passed
-
-    return OperationResponse(
-        operation_id=final["operation_id"],
-        request_text=text,
-        requester=requester,
-        decision=decision.decision,
-        reasoning=decision.reasoning,
-        cited_rules=decision.cited_rules,
-        confidence=decision.confidence,
-        injection_detected=decision.injection_detected,
-        policy=final["policy"],
-        payment=decision.payment if approved else None,
-        transfer=final["transfer"],
-        context_used=final.get("context", []),
-        created_at=final["created_at"],
+    g.add_edge(START, "guard")
+    g.add_conditional_edges("guard", after_guard, {"router": "router", END: END})
+    g.add_conditional_edges(
+        "router", after_router, {name: name for name in SPECIALISTS} | {END: END}
     )
+
+    for name in READ_ONLY_AGENTS:
+        g.add_edge(name, END)
+    for name in ACTION_AGENTS:
+        g.add_conditional_edges(name, needs_approval, {"human_approval": "human_approval", END: END})
+
+    g.add_conditional_edges(
+        "human_approval",
+        after_approval,
+        {"execute_action": "execute_action", "cancel_action": "cancel_action"},
+    )
+    g.add_edge("execute_action", END)
+    g.add_edge("cancel_action", END)
+
+    return g.compile(checkpointer=checkpointer)

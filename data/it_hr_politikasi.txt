@@ -1,0 +1,57 @@
+ACME TEKNOLOJI A.S. - IT VE INSAN KAYNAKLARI POLITIKALARI
+Dokuman no: IT-IK-POL-002 | Yururluk: 01.01.2026
+
+
+1. SIFRE VE HESAP GUVENLIGI
+
+1.1. Tum calisan hesaplarinda cok faktorlu dogrulama (MFA) zorunludur.
+1.2. Sifreler en az 12 karakter olmali; her 90 gunde bir degistirilmelidir.
+1.3. Sifre sifirlama: Calisan yalnizca KENDI hesabinin sifresini sifirlatabilir. Sifirlama
+baglantisi kayitli e-posta adresine gonderilir ve 30 dakika gecerlidir.
+1.4. Baska bir calisan adina sifre sifirlama talebi, talep sahibinin yoneticisinin yazili
+onayi ve IT yoneticisinin kimlik dogrulamasi olmadan yapilamaz.
+1.5. Sifreler kimseyle paylasilmaz. IT ekibi hicbir kosulda sifre sormaz.
+1.6. Supheli e-posta veya oltalama girisimi guvenlik@acme.example adresine bildirilir.
+
+
+2. YAZILIM VE UYGULAMA ERISIMI
+
+Erisim talepleri, ilgili yazilimin sahibi olan birimin onayiyla verilir. IT yalnizca
+onaylanmis talepleri uygular. Onaysiz erisim verilmez.
+
+2.1. Jira: Tum calisanlar. Onaylayan: dogrudan yonetici.
+2.2. GitHub: Yalnizca yazilim ekibi. Onaylayan: teknik mudur. Erisim iki faktorlu
+dogrulama acikken verilir.
+2.3. Figma: Tasarim ve urun ekipleri. Onaylayan: tasarim muduru.
+2.4. Salesforce: Satis ve musteri iliskileri ekipleri. Onaylayan: satis muduru.
+Musteri verisine eristigi icin veri gizliligi egitimini tamamlamis olmak sarttir.
+2.5. Tableau: Analitik ekibi ve yoneticiler. Onaylayan: veri sahibi birim muduru.
+2.6. Slack ve Google Workspace: Tum calisanlar; ise girisle otomatik tanimlanir.
+2.7. Notion: Tum calisanlar. Onaylayan: dogrudan yonetici.
+2.8. Listede olmayan yazilimlar icin erisim verilemez; once IT'ye yazilim degerlendirme
+talebi acilmalidir.
+
+
+3. UZAKTAN CALISMA VE VPN
+
+3.1. Sirket agindan disaridan ic sistemlere erisim icin VPN kullanimi zorunludur.
+3.2. VPN kurulumu: IT portalindan "Kurumsal VPN Istemcisi"ni indirin, sirket hesabinizla
+(SSO) giris yapin ve MFA kodunu onaylayin. Kurulum sorunlari icin IT destek hatti aranir.
+3.3. Kisisel cihazlarda VPN kullanimi yalnizca IT'nin onayladigi cihazlarla sinirlidir.
+
+
+4. EKIPMAN
+
+4.1. Dizustu bilgisayarlar 3 yilda bir yenilenir. Erken yenileme icin IT'ye gerekce ile
+basvurulur.
+4.2. Kayip veya calinti ekipman 24 saat icinde IT'ye ve guvenlige bildirilmelidir.
+4.3. Isten ayrilan calisan tum ekipmanini son is gunu IT'ye teslim eder.
+
+
+5. ISE GIRIS (ONBOARDING) VE YILLIK IZIN
+
+5.1. Yeni calisan hesaplari IK talebi uzerine IT tarafindan acilir. Standart paket: Google
+Workspace ve Slack. Diger yazilimlar madde 2'ye gore ayrica talep edilir.
+5.2. Yillik izin: 1-5 yil kidemde 14 is gunu, 5-15 yil arasi 20 is gunu, 15 yil uzeri 26
+is gunu. Izin talepleri en az 5 is gunu onceden yoneticiye iletilir.
+5.3. Hastalik izni icin ilk gun IK'ya bilgi verilir; 2 gunu asan izinlerde rapor gerekir.

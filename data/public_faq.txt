@@ -1,0 +1,43 @@
+ACME TEKNOLOJİ - MÜŞTERİ SIKÇA SORULAN SORULAR
+Bu belge müşterilere açıktır.
+
+1. İade süresi ne kadar?
+Donanım ürünlerini teslim tarihinden itibaren 14 gün içinde, kullanılmamış ve orijinal ambalajında
+iade edebilirsiniz. Yazılım lisansları aktivasyondan sonra iade edilemez.
+
+2. İade nasıl başlatılır?
+Müşteri panelinde "Siparişlerim" bölümünden ilgili siparişi seçip "İade talebi oluştur" düğmesine
+basın. İade kargo kodu e-posta adresinize gönderilir. İade ücretsizdir.
+
+3. İade tutarı ne zaman hesabıma geçer?
+İade edilen ürün depomuza ulaştıktan sonra 5 iş günü içinde kontrol edilir; onaylanan iadelerde
+tutar, ödemenin yapıldığı karta 10 iş günü içinde yansır.
+
+4. Kargo ne kadar sürer?
+Stokta olan ürünler 1-3 iş günü içinde kargoya verilir. Teslimat süresi bulunduğunuz ile göre
+1-4 iş günüdür. Kargo takip numarası, sipariş kargoya verildiğinde e-posta ile gönderilir.
+
+5. Hangi ödeme yöntemlerini kabul ediyorsunuz?
+Kredi kartı, banka kartı ve havale/EFT kabul edilir. Kurumsal müşteriler için 30 gün vadeli fatura
+seçeneği, sözleşme kapsamında sunulur.
+
+6. Müşteri paneli şifremi unuttum, ne yapmalıyım?
+Giriş sayfasındaki "Şifremi unuttum" bağlantısına tıklayın. Sıfırlama bağlantısı kayıtlı e-posta
+adresinize gönderilir ve 30 dakika geçerlidir. Destek ekibimiz sizden asla şifrenizi istemez.
+
+7. Ürünüm arızalı geldi, ne yapmalıyım?
+Teslimattan sonraki 7 gün içinde arızalı ürünler ücretsiz olarak yenisiyle değiştirilir. Müşteri
+panelinden "Arıza bildirimi" formunu doldurun ve ürünün fotoğrafını ekleyin.
+
+8. Garanti süresi nedir?
+Donanım ürünleri 2 yıl üretici garantisi kapsamındadır. Garanti, kullanıcı hatasından kaynaklanan
+hasarları kapsamaz.
+
+9. Müşteri hizmetlerine nasıl ulaşırım?
+Müşteri hizmetleri hafta içi 09:00-18:00 saatleri arasında 0850 555 12 34 numaralı telefondan ve
+destek@acme-ornek.com adresinden hizmet verir. Kritik kurumsal hizmet kesintileri için 7/24 destek
+hattına müşteri panelinden ulaşabilirsiniz.
+
+10. Kişisel verilerim nasıl korunuyor?
+Kişisel verileriniz KVKK kapsamında işlenir. Aydınlatma metnimize web sitemizin alt kısmındaki
+"KVKK" bağlantısından ulaşabilirsiniz. Veri talepleriniz için kvkk@acme-ornek.com adresine yazabilirsiniz.

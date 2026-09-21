@@ -1,0 +1,58 @@
+ACME TEKNOLOJI A.S. - SOZLESME KIRMIZI CIZGILERI
+Dokuman no: HUK-KC-001 | Sahibi: Hukuk Departmani
+
+Asagidaki hukumler sirket icin KABUL EDILEMEZ. Bunlardan biri sozlesmede yer aliyorsa
+sozlesme, hukuk departmaninin yazili onayi olmadan imzalanamaz. ACME, bu politikada
+"Sirket" olarak anilir.
+
+
+KC-1. SINIRSIZ SORUMLULUK (KRITIK)
+Sirketin sorumlulugu, ilgili sozlesmenin toplam bedeli ile sinirli olmalidir. Sinirsiz
+sorumluluk, dolayli zararlarin tazmini veya sozlesme bedelinin ustunde tazminat
+yukumlulugu KABUL EDILEMEZ.
+
+KC-2. TEK TARAFLI FESIH (YUKSEK)
+Karsi tarafin, Sirkete bildirim yapmadan veya telafi imkani tanimadan sozlesmeyi tek
+tarafli feshetme hakki KABUL EDILEMEZ. Fesih icin en az 30 gun onceden yazili bildirim
+ve duzeltme suresi zorunludur.
+
+KC-3. FIKRI MULKIYET DEVRI (KRITIK)
+Sirketin sozlesmeden ONCE sahip oldugu yazilim, arac, metodoloji ve know-how uzerindeki
+fikri mulkiyet haklarinin karsi tarafa devri veya bunlar uzerinde sinirsiz kullanim hakki
+taninmasi KABUL EDILEMEZ. Yalnizca sozlesme kapsaminda uretilen teslimatlar icin sinirli
+lisans verilebilir.
+
+KC-4. UZUN OTOMATIK YENILEME (ORTA)
+12 aydan uzun otomatik yenileme donemi veya feshe iliskin 90 gunden uzun bildirim suresi
+KABUL EDILEMEZ.
+
+KC-5. UZUN ODEME VADESI (ORTA)
+Sirketin tahsil edecegi bedellerde 60 gunden uzun odeme vadesi KABUL EDILEMEZ.
+
+KC-6. MUNHASIRLIK VE REKABET YASAGI (YUKSEK)
+Sirketi ayni veya benzer hizmeti baska musterilere sunmaktan alikoyan munhasirlik veya
+rekabet yasagi; 12 aydan uzun ya da cografi sinirsiz ise KABUL EDILEMEZ.
+
+KC-7. YETKILI MAHKEME VE UYGULANACAK HUKUK (YUKSEK)
+Turkiye disinda bir mahkeme veya tahkim yeri ile yabanci hukukun secilmesi KABUL
+EDILEMEZ. Yetkili yer Istanbul mahkemeleri ve icra daireleri, uygulanacak hukuk Turk
+hukukudur.
+
+KC-8. KISISEL VERILERIN AKTARIMI (KRITIK)
+Kisisel verilerin, KVKK kapsaminda gerekli izin ve veri isleme sozlesmesi olmaksizin yurt
+disina aktarilmasi KABUL EDILEMEZ.
+
+KC-9. SURESIZ GIZLILIK (ORTA)
+Gizlilik yukumlulugunun suresiz olmasi KABUL EDILEMEZ. Gizlilik suresi sozlesme bitisinden
+itibaren en fazla 5 yildir.
+
+KC-10. TEK TARAFLI DEGISIKLIK HAKKI (YUKSEK)
+Karsi tarafin fiyati, kapsami veya sartlari Sirketin onayi olmadan tek tarafli
+degistirebilmesi KABUL EDILEMEZ.
+
+KC-11. ONAYSIZ DEVIR (ORTA)
+Sozlesmenin veya haklarin Sirketin onayi olmadan devredilebilmesi KABUL EDILEMEZ.
+
+KC-12. AGIR CEZAI SART (YUKSEK)
+Gunluk yuzde 1'i asan gecikme cezasi veya toplamda sozlesme bedelinin yuzde 10'unu asan
+cezai sart KABUL EDILEMEZ.
