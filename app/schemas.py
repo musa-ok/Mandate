@@ -195,7 +195,10 @@ class PublicSupportResponse(BaseModel):
 
 class ApprovalDecisionPayload(BaseModel):
     approved: bool
-    reviewer: str = Field(min_length=1, max_length=120, description="Karari veren kisi")
+    reviewer: str = Field(
+        default="", max_length=120,
+        description="Karari veren kisi. AUTH_MODE=keys iken zorunlu; SSO'da yok sayilir (kimlikten gelir).",
+    )
     comment: str = Field(default="", max_length=1000)
 
 
@@ -215,6 +218,8 @@ class RunView(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
     pending_action: dict[str, Any] | None = None
     approval: dict[str, Any] | None = None
+    # Onay bekleyen eylemde: onay matrisinin eslesen kurali ve onaylayabilecek roller
+    approval_policy: dict[str, Any] | None = None
     action_result: dict[str, Any] | None = None
     error: str = ""
     trace: list[str] = Field(default_factory=list)

@@ -66,6 +66,16 @@ const RECOMMEND = { APPROVE: ["Onaya uygun", "teal"], CLARIFY: ["Bilgi iste", "s
                     CLEAR: ["İmzaya uygun", "teal"], NEGOTIATE: ["Pazarlık", "strong"] };
 const badge = (pair, fallback) => el("span", { class: `badge ${(pair || [])[1] || ""}` }, (pair || [])[0] || fallback || "-");
 
+// ------------------------------------------------------------------ kimlik
+// keys: paylasilan anahtarlar (demo). oidc: sirket hesabiyla giris (SSO); tarayici yalnizca
+// HttpOnly oturum cerezi tasir, token gormez. Yazma isteklerinde X-CSRF-Token gonderilir.
+let authMode = "keys";
+let me = null;
+const ROLE_LABELS = { employee: "Çalışan", it_admin: "IT yöneticisi", legal: "Hukuk", finance_manager: "Finans yöneticisi",
+  cfo: "CFO", procurement_manager: "Satın alma yöneticisi", auditor: "Denetçi", admin: "Sistem yöneticisi" };
+const can = (perm) => authMode === "keys" || (me?.permissions || []).includes(perm);
+const signedIn = () => (authMode === "oidc" ? !!me : !!getSourceKey());
+
 // ------------------------------------------------------------------ API
 const ADMIN_KEY_STORE = "mandate.adminKey";
 const SOURCE_KEY_STORE = "mandate.sourceKey";
@@ -81,19 +91,25 @@ class ApiError extends Error {
 async function api(path, { method = "GET", json, form, admin = false, pub = false } = {}) {
   const headers = {};
   // Dis uca (pub) HICBIR kimlik bilgisi gonderilmez: musterinin tarayicisini taklit eder.
-  if (!pub && getSourceKey()) headers["X-Source-Key"] = getSourceKey();
+  if (!pub && authMode === "keys" && getSourceKey()) headers["X-Source-Key"] = getSourceKey();
   let body;
   if (json !== undefined) { headers["Content-Type"] = "application/json"; body = JSON.stringify(json); }
   if (form) body = form;
-  if (admin) headers["X-Admin-Key"] = getAdminKey();
+  if (admin && authMode === "keys") headers["X-Admin-Key"] = getAdminKey();
+  if (!pub && authMode === "oidc" && method !== "GET" && me?.csrf_token) headers["X-CSRF-Token"] = me.csrf_token;
   let res;
   try {
-    res = await fetch(path, { method, headers, body });
+    // pub: oturum cerezi de gitmez
+    res = await fetch(path, { method, headers, body, credentials: pub ? "omit" : "same-origin" });
   } catch (e) {
     throw new ApiError(0, "Sunucuya ulaşılamadı.");
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok && !admin && !pub && (res.status === 401 || res.status === 403)) {
+  if (!res.ok && !pub && authMode === "oidc" && res.status === 401) {
+    me = null;
+    showLoginGate(path === "/auth/me" ? "" : "Oturumunuzun süresi doldu; yeniden giriş yapın.");
+  }
+  if (!res.ok && authMode === "keys" && !admin && !pub && (res.status === 401 || res.status === 403)) {
     setSourceKey("");
     showSourceGate(res.status === 403 ? "Anahtar geçersiz." : "Kurum içi erişim anahtarı gerekli.");
   }
@@ -143,7 +159,8 @@ async function loadHealth() {
   const count = $("#pending-count");
   count.hidden = n === 0;
   count.textContent = String(n);
-  const auth = health.admin_auth === "enabled" ? "Onay koruması açık" : "UYARI: onay anahtarı tanımlı değil";
+  const auth = health.auth_mode === "oidc" ? "Kimlik: şirket hesabı (SSO)"
+    : health.admin_auth === "enabled" ? "Onay koruması açık" : "UYARI: onay anahtarı tanımlı değil";
   $("#health-foot").textContent = `${auth} · kaynak: ${health.caller_source}`;
 }
 
@@ -155,7 +172,14 @@ document.querySelectorAll("[data-channel]").forEach((b) => b.addEventListener("c
 function setChannel(c) {
   channel = c;
   document.querySelectorAll("[data-channel]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.channel === c)));
-  $("#req-requester").placeholder = c === "customer" ? "Müşteri e-postası" : "Talep sahibi";
+  const req = $("#req-requester");
+  req.placeholder = c === "customer" ? "Müşteri e-postası" : "Talep sahibi";
+  if (authMode === "oidc" && me) {
+    // Sunucu da ayni kurali uygular: SSO kullanicisinin talep sahibi alani kimliginden gelir.
+    req.readOnly = c !== "customer";
+    if (c !== "customer") req.value = me.email;
+    else if (req.value === me.email) req.value = "";
+  }
   // Dis kanalda dosya eki yoktur: /public/support yalnizca metin kabul eder.
   $("label[for=req-file]").hidden = c === "customer";
   if (c === "customer") setAttachment(null);
@@ -208,7 +232,7 @@ function renderSuggestions() {
 async function useSuggestion(s) {
   $("#req-text").value = s.text;
   setChannel(s.channel || "internal");
-  $("#req-requester").value = s.requester || "ali@acme.com";
+  if (!(authMode === "oidc" && !s.channel)) $("#req-requester").value = s.requester || "ali@acme.com";
   setAttachment(null);
   if (s.sample) {
     try {
@@ -340,26 +364,39 @@ function renderAction(run, context) {
       badge(SEVERITY[pa.risk_level], pa.risk_level)),
     pa.summary ? el("p", { class: "body muted" }, pa.summary) : null);
   for (const w of pa.details?.warnings || []) box.append(el("div", { class: "callout" }, w));
+  const pol = run.approval_policy;
+  if (pol && run.status === "awaiting_approval") {
+    box.append(el("p", { class: "small muted" }, pol.roles.length
+      ? `Onaylayabilecek: ${pol.roles.map((r) => ROLE_LABELS[r] || r).join(" veya ")} · kural: ${pol.rule}`
+      : pol.description));
+  }
   if (pa.arguments && pa.kind === "tool_call") {
     box.append(el("pre", { class: "code" }, `${pa.tool}(${Object.entries(pa.arguments).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(", ")})`));
   }
   if (run.status !== "awaiting_approval") return box;
 
   if (context === "request") {
+    const who = pol?.roles?.length ? pol.roles.map((r) => ROLE_LABELS[r] || r).join(" veya ") : "bir yönetici";
+    const own = authMode === "oidc" && me && run.requester.toLowerCase() === me.email.toLowerCase();
+    const mayDecide = authMode === "keys" || (can("approvals:decide") && !own && (pol?.roles || []).some((r) => (me?.roles || []).includes(r)));
     box.append(el("div", { class: "row" },
-      el("span", { class: "small muted" }, "Bu işlem bir yöneticinin onayını bekliyor."),
-      el("button", { class: "btn", type: "button", onclick: () => showPage("approvals") }, "Onay kuyruğuna git")));
+      el("span", { class: "small muted" }, own && (pol?.roles || []).some((r) => (me?.roles || []).includes(r))
+        ? `Bu işlem ${who} onayını bekliyor. Kendi talebinizi onaylayamazsınız (dört göz ilkesi); başka bir ${who} onaylamalı.`
+        : `Bu işlem ${who} onayını bekliyor.`),
+      mayDecide ? el("button", { class: "btn", type: "button", onclick: () => showPage("approvals") }, "Onay kuyruğuna git") : null));
     return box;
   }
 
-  const reviewer = el("input", { class: "input", id: `rv-${run.run_id}`, value: localStorage.getItem("mandate.reviewer") || "", placeholder: "yonetici@acme.com", required: true, maxlength: "120" });
+  const sso = authMode === "oidc";
+  const reviewer = el("input", { class: "input", id: `rv-${run.run_id}`, value: sso ? `${me?.name || ""} (${me?.email || ""})` : localStorage.getItem("mandate.reviewer") || "",
+    placeholder: "yonetici@acme.com", required: true, maxlength: "120", readonly: sso });
   const comment = el("input", { class: "input", id: `cm-${run.run_id}`, placeholder: "Not (isteğe bağlı)", maxlength: "1000" });
   const approve = el("button", { class: "btn btn-primary", type: "button" }, "Onayla ve yürüt");
   const reject = el("button", { class: "btn", type: "button" }, "Reddet");
   const decide = async (approved) => {
-    const who = reviewer.value.trim();
-    if (!who) { reviewer.focus(); toast("Kararı verenin adını yazın."); return; }
-    try { localStorage.setItem("mandate.reviewer", who); } catch {}
+    const who = sso ? "" : reviewer.value.trim();  // SSO: inceleyen sunucuda kimlikten belirlenir
+    if (!sso && !who) { reviewer.focus(); toast("Kararı verenin adını yazın."); return; }
+    if (!sso) { try { localStorage.setItem("mandate.reviewer", who); } catch {} }
     approve.disabled = reject.disabled = true;
     try {
       const done = await api(`/approvals/${encodeURIComponent(run.run_id)}/decision`, {
@@ -370,7 +407,7 @@ function renderAction(run, context) {
       loadHealth();
     } catch (err) {
       approve.disabled = reject.disabled = false;
-      if (err.status === 401 || err.status === 403) { setAdminKey(""); renderAdminGate(err.message); }
+      if (!sso && (err.status === 401 || err.status === 403)) { setAdminKey(""); renderAdminGate(err.message); }
       toast(`Karar kaydedilemedi: ${err.message}`);
     }
   };
@@ -517,16 +554,26 @@ function renderAdminGate(message) {
 
 async function loadApprovals() {
   const list = $("#approvals-list");
-  if (!getAdminKey()) { renderAdminGate(); return; }
+  if (authMode === "oidc" && !can("approvals:decide")) {
+    clear(list).append(el("div", { class: "empty" }, "Onay yetkiniz yok. Onaylar rolünüze göre (CFO, IT yöneticisi, hukuk…) gösterilir."));
+    return;
+  }
+  if (authMode === "keys" && !getAdminKey()) { renderAdminGate(); return; }
   clear($("#admin-gate"));
   clear(list).append(el("div", { class: "loading" }, el("div", { class: "spinner" }), el("span", { class: "muted body" }, "Yükleniyor…")));
   try {
-    const items = await api("/approvals", { admin: true });
+    const [items] = await Promise.all([api("/approvals", { admin: true }), loadHealth()]);  // rozet + bos kuyruk aciklamasi guncel olsun
     clear(list);
-    if (!items.length) { list.append(el("div", { class: "empty" }, "Onay bekleyen işlem yok.")); return; }
+    if (!items.length) {
+      const hidden = (health?.pending_approvals_total || 0);
+      list.append(el("div", { class: "empty" }, authMode === "oidc"
+        ? `Rolünüzün onaylayabileceği bekleyen işlem yok.${hidden ? ` Bekleyen ${hidden} işlem başka rollerin yetkisinde veya sizin kendi talebiniz (kendi talebinizi onaylayamazsınız).` : ""}`
+        : "Onay bekleyen işlem yok."));
+      return;
+    }
     for (const run of items) list.append(renderRun(run, { context: "approvals" }));
   } catch (err) {
-    if (err.status === 401 || err.status === 403) { setAdminKey(""); renderAdminGate(err.status === 403 ? "Anahtar geçersiz." : "Anahtar gerekli."); return; }
+    if (authMode === "keys" && (err.status === 401 || err.status === 403)) { setAdminKey(""); renderAdminGate(err.status === 403 ? "Anahtar geçersiz." : "Anahtar gerekli."); return; }
     clear(list).append(el("div", { class: "error-box" }, err.status === 503 ? `Onay sistemi kapalı: ${err.message}` : `Kuyruk yüklenemedi: ${err.message}`));
   }
 }
@@ -581,6 +628,7 @@ $("#logs-refresh").addEventListener("click", loadLogs);
 const DOMAINS = { it_hr: "IT / İK politikaları", red_lines: "Sözleşme kırmızı çizgileri", procurement: "Satın alma şartnamesi",
   public_faq: "Müşteri SSS (dışa açık, ayrı koleksiyon)" };
 async function loadKnowledge() {
+  $("#kb-form").hidden = authMode === "oidc" && !can("memory:write");
   const box = clear($("#kb-stats"));
   try {
     const s = await api("/memory/stats");
@@ -597,7 +645,7 @@ $("#kb-form").addEventListener("submit", async (e) => {
   const form = new FormData();
   for (const f of files) form.append("files", f, f.name);
   try {
-    if (!getAdminKey()) { out.append(el("div", { class: "error-box" }, "Belge yüklemek yönetici yetkisi gerektirir. Önce Onay kuyruğu sayfasında yönetici anahtarını girin.")); return; }
+    if (authMode === "keys" && !getAdminKey()) { out.append(el("div", { class: "error-box" }, "Belge yüklemek yönetici yetkisi gerektirir. Önce Onay kuyruğu sayfasında yönetici anahtarını girin.")); return; }
     const r = await api(`/memory/upload?domain=${encodeURIComponent($("#kb-domain").value)}`, { method: "POST", form, admin: true });
     for (const i of r.ingested) out.append(el("p", { class: "body" }, `${i.filename}: ${i.chunks} parça işlendi (${DOMAINS[i.domain]}).`));
     $("#kb-file").value = "";
@@ -626,14 +674,64 @@ function showSourceGate(message) {
   input.focus();
 }
 
-// ------------------------------------------------------------------ baslat
-renderSuggestions();
-renderFilters();
-setChannel("internal");
-if (getSourceKey()) {
-  showPage(location.hash.slice(1) || "request");
-  loadHealth();
-} else {
-  showSourceGate();
+// ------------------------------------------------------------------ SSO girisi
+function showLoginGate(message) {
+  const gate = $("#source-gate");
+  $(".main").querySelectorAll(".page").forEach((p) => { p.hidden = true; });
+  $("#user-box").hidden = true;
+  clear(gate).hidden = false;
+  const next = `/${location.hash}`;
+  gate.append(el("div", { class: "card" },
+    el("h1", {}, "Kurum içi erişim"),
+    el("p", { class: "body muted" }, "Mandate'e şirket hesabınızla girin. Onaylayabileceğiniz işlemler rolünüze göre belirlenir."),
+    message ? el("div", { class: "callout" }, message) : null,
+    el("div", { class: "row" },
+      el("a", { class: "btn btn-primary", href: `/auth/login?next=${encodeURIComponent(next)}` }, "Şirket hesabıyla giriş yap"))));
 }
-setInterval(() => { if (getSourceKey()) loadHealth(); }, 15000);
+
+function renderUser() {
+  const box = clear($("#user-box"));
+  box.hidden = !me;
+  if (!me) return;
+  box.append(
+    el("div", { class: "user-name" }, me.name || me.email),
+    el("div", { class: "user-mail" }, me.email),
+    el("div", { class: "row wrap" }, (me.roles || []).filter((r) => r !== "employee").map((r) => el("span", { class: "badge" }, ROLE_LABELS[r] || r))),
+    el("button", { class: "btn", type: "button", onclick: async () => {
+      // Kimlik saglayicidaki oturum da kapansin: aksi halde "Giris yap" ayni hesabi sifre sormadan acar.
+      let target = "/";
+      try { target = (await api("/auth/logout", { method: "POST" })).redirect || "/"; } catch {}
+      me = null;
+      location.href = target;
+    } }, "Çıkış yap"));
+  document.querySelector('.nav-item[data-page="approvals"]').hidden = !can("approvals:decide");
+}
+
+// ------------------------------------------------------------------ baslat
+async function boot() {
+  renderSuggestions();
+  renderFilters();
+  try { authMode = (await (await fetch("/auth/config")).json()).mode || "keys"; } catch {}
+  if (authMode === "oidc") {
+    try {
+      me = await api("/auth/me");
+    } catch (err) {
+      if (err.status !== 401) showLoginGate(err.status === 503 ? `SSO yapılandırması eksik: ${err.message}` : err.message);
+      return;  // 401: giris ekrani api() icinde gosterildi
+    }
+    renderUser();
+    setChannel("internal");
+    showPage(location.hash.slice(1) || "request");
+    loadHealth();
+  } else {
+    setChannel("internal");
+    if (getSourceKey()) {
+      showPage(location.hash.slice(1) || "request");
+      loadHealth();
+    } else {
+      showSourceGate();
+    }
+  }
+}
+boot();
+setInterval(() => { if (signedIn()) loadHealth(); }, 15000);

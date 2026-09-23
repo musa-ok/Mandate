@@ -1,0 +1,43 @@
+{
+  "_aciklama": "Kurallar yukaridan asagi denenir; ilk eslesen gecerlidir. Eslesen kural yoksa eylemi kimse onaylayamaz. Roller: it_admin, legal, finance_manager, cfo, procurement_manager. Kosullar: amount_gt, amount_lte, over_budget, risk_level_in, tool_in.",
+  "rules": [
+    {
+      "id": "harcama-butce-asimi",
+      "action": "expense_approval",
+      "when": {"over_budget": true},
+      "roles": ["cfo"],
+      "description": "Butceyi asan her harcama yalnizca CFO onayiyla"
+    },
+    {
+      "id": "harcama-buyuk",
+      "action": "expense_approval",
+      "when": {"amount_gt": 50000},
+      "roles": ["cfo"],
+      "description": "50.000 TL ustu harcama yalnizca CFO onayiyla"
+    },
+    {
+      "id": "harcama",
+      "action": "expense_approval",
+      "roles": ["finance_manager", "cfo"],
+      "description": "Otomatik onay limiti ile 50.000 TL arasi: finans yoneticisi veya CFO"
+    },
+    {
+      "id": "it-islem",
+      "action": "tool_call",
+      "roles": ["it_admin"],
+      "description": "Sifre sifirlama ve yazilim erisimi: IT yoneticisi"
+    },
+    {
+      "id": "sozlesme",
+      "action": "contract_signoff",
+      "roles": ["legal"],
+      "description": "Riskli sozlesmenin imzaya iletilmesi: hukuk"
+    },
+    {
+      "id": "tedarikci",
+      "action": "vendor_approval",
+      "roles": ["procurement_manager"],
+      "description": "Onayli tedarikci listesine ekleme: satin alma yoneticisi"
+    }
+  ]
+}

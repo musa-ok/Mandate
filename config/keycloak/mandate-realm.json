@@ -1,0 +1,244 @@
+{
+  "realm": "mandate",
+  "displayName": "ACME Teknoloji (demo)",
+  "enabled": true,
+  "sslRequired": "none",
+  "loginWithEmailAllowed": true,
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 3600,
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "tr",
+    "en"
+  ],
+  "defaultLocale": "tr",
+  "groups": [
+    {
+      "name": "Mandate.Finance",
+      "path": "/Mandate.Finance"
+    },
+    {
+      "name": "Mandate.CFO",
+      "path": "/Mandate.CFO"
+    },
+    {
+      "name": "Mandate.IT",
+      "path": "/Mandate.IT"
+    },
+    {
+      "name": "Mandate.Legal",
+      "path": "/Mandate.Legal"
+    },
+    {
+      "name": "Mandate.Procurement",
+      "path": "/Mandate.Procurement"
+    },
+    {
+      "name": "Mandate.Audit",
+      "path": "/Mandate.Audit"
+    },
+    {
+      "name": "Mandate.Admin",
+      "path": "/Mandate.Admin"
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "mandate-panel",
+      "name": "Mandate",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "mandate-dev-client-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8010/*",
+        "http://127.0.0.1:8010/*",
+        "http://localhost:8000/*",
+        "http://127.0.0.1:8000/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "mandate-panel",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "ali",
+      "email": "ali@acme.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Ali",
+      "lastName": "Yılmaz",
+      "groups": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Mandate.2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "ayse",
+      "email": "ayse@acme.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Ayşe",
+      "lastName": "Kaya",
+      "groups": [
+        "/Mandate.Finance"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Mandate.2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "cem",
+      "email": "cem@acme.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Cem",
+      "lastName": "Arslan",
+      "groups": [
+        "/Mandate.CFO"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Mandate.2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "ilker",
+      "email": "ilker@acme.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "İlker",
+      "lastName": "Demir",
+      "groups": [
+        "/Mandate.IT"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Mandate.2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "leyla",
+      "email": "leyla@acme.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Leyla",
+      "lastName": "Şahin",
+      "groups": [
+        "/Mandate.Legal"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Mandate.2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "selin",
+      "email": "selin@acme.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Selin",
+      "lastName": "Aydın",
+      "groups": [
+        "/Mandate.Procurement"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Mandate.2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "deniz",
+      "email": "deniz@acme.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Deniz",
+      "lastName": "Çelik",
+      "groups": [
+        "/Mandate.Audit"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Mandate.2026",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "sistem",
+      "email": "sistem@acme.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Sistem",
+      "lastName": "Yöneticisi",
+      "groups": [
+        "/Mandate.Admin"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Mandate.2026",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

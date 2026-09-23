@@ -1,0 +1,23 @@
+# Sirlar ve yerel veriler imaja GIRMEZ
+.env
+.env.*
+!.env.example
+storage/
+*.db
+*.sqlite*
+.git/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+local_cache/
+.cache/
+models/
+sunum/
+tests/
+.DS_Store
+.vscode/
+.idea/

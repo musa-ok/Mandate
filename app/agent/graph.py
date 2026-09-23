@@ -132,11 +132,18 @@ def normalize_approval(raw: Any) -> dict[str, Any]:
     """Insan kararini guvenli bicime cevirir. Sadece acik `True` ONAY sayilir."""
     if not isinstance(raw, dict):
         return {"approved": False, "reviewer": "unknown", "comment": "gecersiz karar bicimi"}
-    return {
+    out: dict[str, Any] = {
         "approved": raw.get("approved") is True,
         "reviewer": str(raw.get("reviewer") or "unknown")[:120],
         "comment": str(raw.get("comment") or "")[:1000],
     }
+    # Yetkilendirme kaniti (API katmani doldurur): kim, hangi rolle, matrisin hangi kuralina gore
+    for key in ("reviewer_id", "policy_rule", "auth_method"):
+        if raw.get(key):
+            out[key] = str(raw[key])[:200]
+    if isinstance(raw.get("reviewer_roles"), list):
+        out["reviewer_roles"] = [str(r)[:40] for r in raw["reviewer_roles"]][:10]
+    return out
 
 
 def node_human_approval(state: OSState) -> dict[str, Any]:
@@ -158,7 +165,10 @@ def node_human_approval(state: OSState) -> dict[str, Any]:
     verdict = "ONAY" if approval["approved"] else "RED"
     return {
         "approval": approval,
-        "trace": [f"insan karari: {verdict} (inceleyen: {approval['reviewer']})"],
+        "trace": [
+            f"insan karari: {verdict} (inceleyen: {approval['reviewer']}"
+            + (f", kural: {approval['policy_rule']}" if approval.get("policy_rule") else "") + ")"
+        ],
     }
 
 

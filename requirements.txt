@@ -10,6 +10,9 @@ langgraph>=1.0
 # Bekleyen onaylar sunucu yeniden baslasa da kaybolmasin diye kalici checkpoint
 langgraph-checkpoint-sqlite>=3.0
 aiosqlite>=0.20
+# Uretim: kayitlar + checkpoint PostgreSQL'de (birden fazla uygulama kopyasi)
+langgraph-checkpoint-postgres>=3.0
+psycopg[binary,pool]>=3.2
 
 # --- LLM: bulut (Gemini) + yerel (Ollama) ---
 google-genai>=1.0
@@ -21,3 +24,8 @@ pypdf>=4.2
 
 # --- Loglama / SQL ---
 SQLAlchemy>=2.0
+
+# --- Kimlik (SSO / OIDC): IdP token imzasini JWKS ile dogrulama ---
+pyjwt[crypto]>=2.8
+# IdP ve Vault istemcisi
+httpx>=0.27

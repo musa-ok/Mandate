@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import DateTime, String, Text, create_engine, select, update
+from sqlalchemy import DateTime, String, Text, create_engine, func, select, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 from app.config import get_settings
@@ -15,6 +15,7 @@ settings = get_settings()
 _engine = create_engine(
     settings.database_url,
     connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {},
+    pool_pre_ping=True,  # PostgreSQL: yeniden baslayan sunucudan kalan olu baglantilar
 )
 
 
@@ -141,11 +142,13 @@ def get_run(run_id: str) -> Run | None:
         return row
 
 
-def list_runs(status: str | None = None, limit: int = 50) -> list[Run]:
+def list_runs(status: str | None = None, limit: int = 50, requester: str | None = None) -> list[Run]:
     with session_scope() as s:
         query = select(Run).order_by(Run.created_at.desc()).limit(limit)
         if status:
             query = query.where(Run.status == status)
+        if requester is not None:
+            query = query.where(func.lower(Run.requester) == requester.lower())
         rows = list(s.scalars(query))
         for r in rows:
             s.expunge(r)

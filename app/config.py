@@ -58,8 +58,12 @@ class Settings(BaseSettings):
     chunk_overlap: int = 150
 
     # --- Uygulama veritabanlari --------------------------------------------
-    database_url: str = f"sqlite:///{STORAGE_DIR / 'runs.db'}"  # calisma / denetim kaydi
-    checkpoint_db_path: str = str(STORAGE_DIR / "checkpoints.db")  # LangGraph durumu (HITL)
+    # Calisma / denetim kaydi. Uretim: postgresql+psycopg://kullanici:sifre@host:5432/mandate
+    database_url: str = f"sqlite:///{STORAGE_DIR / 'runs.db'}"
+    # LangGraph durumu (bekleyen onaylar). Bos -> checkpoint_db_path'teki SQLite dosyasi.
+    # Uretim: postgresql://kullanici:sifre@host:5432/mandate  (surucu eki OLMADAN)
+    checkpoint_database_url: str = ""
+    checkpoint_db_path: str = str(STORAGE_DIR / "checkpoints.db")
     sales_db_path: str = str(DATA_DIR / "sales.db")  # Veri Analisti'nin sorguladigi DB
 
     # --- Veri Analisti (Text-to-SQL) guvenlik sinirlari ---------------------
@@ -114,10 +118,65 @@ class Settings(BaseSettings):
     support_reply_mode: Literal["extractive", "generative"] = "extractive"
 
     # --- Insan onayi / yonetim ---------------------------------------------
-    # Onay endpoint'lerini korur. Bos ise KORUMASIZ (yalnizca yerel demo icin).
+    # YALNIZCA AUTH_MODE=keys: onay ve yonetim uclarini korur. Bos -> uclar kapali (503).
     admin_api_key: str | None = None
+
+    # --- Kimlik (SSO) ve rol bazli erisim ----------------------------------
+    # keys: paylasilan anahtarlar (demo; tek yonetici anahtari tum onaylari verir)
+    # oidc: Entra ID / Okta / Google Workspace ile kisi bazli giris + onay matrisi
+    auth_mode: Literal["keys", "oidc"] = "keys"
+    oidc_issuer: str = ""  # orn. https://login.microsoftonline.com/<tenant>/v2.0
+    # Istege bagli: discovery belgesinin SUNUCUDAN erisilen adresi. Tarayicinin gordugu issuer
+    # ile uygulamanin IdP'ye ulastigi adres farkliysa (orn. Docker icinde http://keycloak:8080).
+    # Belgedeki issuer yine OIDC_ISSUER ile birebir ayni olmali.
+    oidc_discovery_url: str = ""
+    oidc_client_id: str = ""
+    oidc_client_secret: str = ""
+    # API istemcilerinin Bearer token'lari icin beklenen audience. Bos -> client_id.
+    oidc_audience: str = ""
+    oidc_scopes: str = "openid email profile"
+    # IdP'deki uygulamanin istemci dogrulama yontemi (Okta varsayilani basic'tir)
+    oidc_token_auth_method: Literal["client_secret_post", "client_secret_basic"] = "client_secret_post"
+    # Rol/grup bilgisinin geldigi claim: Entra app rolleri "roles", Okta "groups".
+    oidc_roles_claim: str = "roles"
+    # IdP rol/grup adi (veya e-posta) -> Mandate rolu: "Finans-Yonetici:finance_manager,cfo@acme.com:cfo"
+    oidc_role_map: str = ""
+    # Girisi yapan HERKESE verilen roller (virgulle).
+    oidc_default_roles: str = "employee"
+    # Bos degilse yalnizca bu alan adlarindaki e-postalar girebilir: "acme.com,acme.com.tr"
+    oidc_allowed_domains: str = ""
+    # IdP'ye kayitli geri donus adresi. Bos -> istegin kendi adresinden /auth/callback.
+    oidc_redirect_uri: str = ""
+    # Panel oturum cerezini imzalar. AUTH_MODE=oidc iken en az 32 karakter ZORUNLU.
+    session_secret: str = ""
+    session_ttl_minutes: int = 480
+    # Cerez yalnizca HTTPS'te gonderilsin. Yerel http denemesi icin false.
+    session_cookie_secure: bool = True
+    # Hangi rolun hangi eylemi hangi kosulda onaylayabilecegi
+    approval_policy_path: str = str(BASE_DIR / "config" / "approval_policy.json")
+
+    # --- Sirlar: HashiCorp Vault (KV v2) ------------------------------------
+    # VAULT_ADDR bossa sirlar ortam degiskenlerinden okunur. Doluysa asagidaki sir alanlari
+    # Vault'tan gelir ve ortamdakileri EZER; Vault'a ulasilamazsa uygulama BASLAMAZ.
+    vault_addr: str = ""
+    vault_token: str = ""
+    vault_role_id: str = ""  # AppRole (token yerine)
+    vault_secret_id: str = ""
+    vault_namespace: str = ""  # Vault Enterprise / HCP
+    vault_kv_mount: str = "secret"
+    vault_secret_path: str = "mandate"
+
+
+def build_settings() -> Settings:
+    settings = Settings()
+    if settings.vault_addr:
+        from app.vault import load_secrets
+
+        # init argumanlari ortam degiskenlerinden onceliklidir -> Vault degerleri kazanir
+        settings = Settings(**load_secrets(settings))
+    return settings
 
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return build_settings()

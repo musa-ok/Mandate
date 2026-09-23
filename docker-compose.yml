@@ -1,0 +1,100 @@
+# Mandate: uygulama + PostgreSQL + Qdrant sunucusu (+ istege bagli Vault gelistirme sunucusu)
+#
+#   cp .env.example .env         # POSTGRES_PASSWORD, QDRANT_API_KEY ve diger ayarlari doldurun
+#   docker compose up -d --build
+#   docker compose exec mandate python -m scripts.seed      # ornek bilgi tabani
+#   -> http://127.0.0.1:8000
+#
+# Vault'u denemek icin: docker compose --profile vault-dev up -d  (bkz. README "Sirlar: Vault")
+# Canli SSO / rol demosu: docker compose --profile sso-dev up -d keycloak  (bkz. README "SSO demosu")
+name: mandate
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mandate
+      POSTGRES_USER: mandate
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env icinde tanimlanmali}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mandate -d mandate"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:v1.15.5
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?QDRANT_API_KEY .env icinde tanimlanmali}
+      QDRANT__TELEMETRY_DISABLED: "true"
+    volumes:
+      - qdrant:/qdrant/storage
+    restart: unless-stopped
+
+  mandate:
+    build: .
+    env_file: .env
+    environment:
+      # .env'deki yerel (dosya tabanli) ayarlari ezer. Vault kullaniliyorsa bu sirlar oradan gelir.
+      DATABASE_URL: postgresql+psycopg://mandate:${POSTGRES_PASSWORD}@postgres:5432/mandate
+      CHECKPOINT_DATABASE_URL: postgresql://mandate:${POSTGRES_PASSWORD}@postgres:5432/mandate
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+      # .env'deki OLLAMA_HOST (orn. localhost) konteyner icinde calismaz: ayri degisken
+      OLLAMA_HOST: ${OLLAMA_HOST_IN_DOCKER:-http://host.docker.internal:11434}
+      SALES_DB_PATH: /app/storage/sales.db
+      FINANCE_DB_PATH: /app/storage/finance.db
+      # Konteyner Keycloak'a tarayicinin gordugu localhost:8080 uzerinden ulasamaz; ic adres.
+      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL_IN_DOCKER:-${OIDC_DISCOVERY_URL:-}}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Linux'ta makinedeki Ollama'ya erisim
+    ports:
+      # Makinedeki port: MANDATE_PORT (varsayilan 8000; 8000 doluysa orn. 8010). Disariya ters vekil (TLS) ile acin.
+      - "127.0.0.1:${MANDATE_PORT:-8000}:8000"
+    volumes:
+      - storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    restart: unless-stopped
+
+  # YALNIZCA DENEME: bellek ici, muhurlenmemis Vault. Uretimde kurumun Vault'u kullanilir.
+  vault:
+    profiles: ["vault-dev"]
+    image: hashicorp/vault:1.18
+    command: server -dev -dev-listen-address=0.0.0.0:8200
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN:-mandate-dev-root}
+    cap_add: [IPC_LOCK]
+    ports:
+      - "127.0.0.1:8200:8200"
+
+  # YALNIZCA DEMO: hazir kullanicilarla yerel kimlik saglayici (Entra ID / Okta yerine).
+  # Kullanicilar ve gruplar: config/keycloak/mandate-realm.json  (sifre: Mandate.2026)
+  # Yonetim konsolu: http://localhost:8080/admin  (admin / KEYCLOAK_ADMIN_PASSWORD)
+  keycloak:
+    profiles: ["sso-dev"]
+    image: quay.io/keycloak/keycloak:26.0
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-mandate-dev-admin}
+      # Tarayiciya giden adresler (issuer, giris sayfasi) hep localhost:8080 ...
+      KC_HOSTNAME: http://localhost:8080
+      # ... ama token / JWKS uclari istegin geldigi adrese gore: Docker icindeki uygulama
+      # http://keycloak:8080, makinedeki uygulama http://localhost:8080 uzerinden ulasir.
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    volumes:
+      - ./config/keycloak:/opt/keycloak/data/import:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  pgdata:
+  qdrant:
+  storage:

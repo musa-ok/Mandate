@@ -20,6 +20,15 @@ os.environ.update(
     SALES_DB_PATH=str(_TMP / "sales.db"),
     FINANCE_DB_PATH=str(_TMP / "finance.db"),
     QDRANT_PATH=str(_TMP / "qdrant"),
+    # Gelistiricinin .env'i (orn. AUTH_MODE=oidc, Vault, Qdrant sunucusu) testleri etkilemesin
+    AUTH_MODE="keys",
+    OIDC_ISSUER="", OIDC_DISCOVERY_URL="", OIDC_CLIENT_ID="", OIDC_CLIENT_SECRET="", OIDC_AUDIENCE="",
+    OIDC_REDIRECT_URI="", OIDC_ROLES_CLAIM="roles", OIDC_ROLE_MAP="", OIDC_DEFAULT_ROLES="employee",
+    OIDC_ALLOWED_DOMAINS="", OIDC_SCOPES="openid email profile", OIDC_TOKEN_AUTH_METHOD="client_secret_post",
+    SESSION_SECRET="", SESSION_COOKIE_SECURE="true",
+    VAULT_ADDR="", VAULT_TOKEN="", VAULT_ROLE_ID="", VAULT_SECRET_ID="",
+    QDRANT_URL="", QDRANT_API_KEY="", CHECKPOINT_DATABASE_URL="",
+    FINANCE_AUTO_APPROVE_LIMIT="10000", SUPPORT_REPLY_MODE="extractive",
 )
 
 import pytest  # noqa: E402
